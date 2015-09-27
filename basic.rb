@@ -84,7 +84,7 @@ HTML
 
 run "README.rdoc"
 file 'README.md', <<-MARKDOWN
-Product by [FLRNT](#)
+Product by [flrnt](#)
 MARKDOWN
 
 after_bundle do
