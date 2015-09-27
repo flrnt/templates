@@ -56,6 +56,14 @@ RUBY
 generate(:controller, 'pages', 'home', '--no-helper', '--no-assets', '--skip-routes')
 route "root to: 'pages#home'"
 
+run 'rm app/assets/javascripts/application.js'
+file 'app/assets/javascripts/application.js', <<-JS
+//= require jquery
+//= require jquery_ujs
+//= require bootstrap-sprockets
+//= require_tree .
+JS
+
 run 'rm app/views/layouts/application.html.erb'
 file 'app/views/layouts/application.html.erb', <<-HTML
 <!DOCTYPE html>
@@ -73,6 +81,11 @@ file 'app/views/layouts/application.html.erb', <<-HTML
   </body>
 </html>
 HTML
+
+run "README.rdoc"
+file 'README.md', <<-MARKDOWN
+Product by [flrnt](#)
+MARKDOWN
 
 after_bundle do
   run "bundle exec figaro install"
