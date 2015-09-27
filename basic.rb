@@ -81,4 +81,6 @@ after_bundle do
   git :init
   git add: "."
   git commit: %Q{ -m 'initial commit' }
+  hub create
+  git :push => 'origin master'
 end
