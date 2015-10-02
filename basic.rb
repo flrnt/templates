@@ -58,11 +58,13 @@ generate(:controller, 'pages', 'home', '--no-helper', '--no-assets', '--skip-rou
 route "root to: 'pages#home'"
 
 run 'rm app/assets/stylesheets/application.css'
-file 'app/assets/stylesheets/application.css', <<-STR
+file 'app/assets/stylesheets/application.css', <<-CSS
+/*
 *= require normalize-rails
 *= require_self
 *= require_tree .
-STR
+*/
+CSS
 
 run 'rm app/assets/javascripts/application.js'
 file 'app/assets/javascripts/application.js', <<-JS
