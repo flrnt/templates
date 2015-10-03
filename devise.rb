@@ -16,6 +16,7 @@ gem 'bootstrap-sass'
 gem 'font-awesome-sass'
 gem 'simple_form'
 gem 'autoprefixer-rails'
+gem 'normalize-rails', '~> 3.0.3'
 
 group :development, :test do
   gem 'binding_of_caller'
@@ -56,6 +57,15 @@ RUBY
 
 generate(:controller, 'pages', 'home', '--no-helper', '--no-assets', '--skip-routes')
 route "root to: 'pages#home'"
+
+run 'rm app/assets/stylesheets/application.css'
+file 'app/assets/stylesheets/application.css', <<-CSS
+/*
+*= require normalize-rails
+*= require_self
+*= require_tree .
+*/
+CSS
 
 run 'rm app/assets/javascripts/application.js'
 file 'app/assets/javascripts/application.js', <<-JS
