@@ -1,35 +1,37 @@
 run "rm Gemfile"
 file 'Gemfile', <<-RUBY
 source 'https://rubygems.org'
-ruby '2.2.3'
+ruby '2.3.0'
 
-gem 'rails', '4.2.3'
+gem 'rails', '#{Rails.version}'
+gem 'puma'
 gem 'pg'
 gem 'figaro'
 gem 'jbuilder', '~> 2.0'
-gem 'devise'
+gem 'devise'#{Rails.version >= "5" ? ", github: 'plataformatec/devise'" : nil}
+gem 'redis'
 
-gem 'sass-rails', '~> 5.0'
+gem 'sass-rails'
 gem 'jquery-rails'
 gem 'uglifier'
 gem 'bootstrap-sass'
 gem 'font-awesome-sass'
-gem 'simple_form'
+gem 'simple_form'#{Rails.version >= "5" ? ", github: 'plataformatec/simple_form'" : nil}
 gem 'autoprefixer-rails'
-gem 'normalize-rails', '~> 3.0.3'
 
 group :development, :test do
   gem 'binding_of_caller'
   gem 'better_errors'
-  gem 'quiet_assets'
+  #{Rails.version >= "5" ? nil : "gem 'quiet_assets'"}
   gem 'pry-byebug'
   gem 'pry-rails'
   gem 'spring'
+  #{Rails.version >= "5" ? "gem 'listen', '~> 3.0.5'" : nil}
+  #{Rails.version >= "5" ? "gem 'spring-watcher-listen', '~> 2.0.0'" : nil}
 end
 
 group :production do
   gem 'rails_12factor'
-  gem 'puma'
 end
 RUBY
 
@@ -37,7 +39,7 @@ file 'Procfile', <<-YAML
 web: bundle exec puma -C config/puma.rb
 YAML
 
-file 'config/puma.rb', <<-RUBY
+puma_file_content = <<-RUBY
 workers Integer(ENV['WEB_CONCURRENCY'] || 2)
 threads_count = Integer(ENV['MAX_THREADS'] || 5)
 threads threads_count, threads_count
@@ -55,17 +57,11 @@ on_worker_boot do
 end
 RUBY
 
-generate(:controller, 'pages', 'home', '--no-helper', '--no-assets', '--skip-routes')
-route "root to: 'pages#home'"
+file 'config/puma.rb', puma_file_content, force: true
 
-run 'rm app/assets/stylesheets/application.css'
-file 'app/assets/stylesheets/application.css', <<-CSS
-/*
-*= require normalize-rails
-*= require_self
-*= require_tree .
-*/
-CSS
+run "rm -rf app/assets/stylesheets"
+run "curl -L https://github.com/lewagon/stylesheets/archive/master.zip > stylesheets.zip"
+run "unzip stylesheets.zip -d app/assets && rm stylesheets.zip && mv app/assets/rails-stylesheets-master app/assets/stylesheets"
 
 run 'rm app/assets/javascripts/application.js'
 file 'app/assets/javascripts/application.js', <<-JS
@@ -75,21 +71,38 @@ file 'app/assets/javascripts/application.js', <<-JS
 //= require_tree .
 JS
 
+if Rails.version >= "5"
+  run "rm app/assets/javascripts/cable.coffee"
+  file "app/assets/javascripts/cable.js", <<-JS
+// Action Cable provides the framework to deal with WebSockets in Rails.
+// You can generate new channels where WebSocket features live using the rails generate channel command.
+//
+// Turn on the cable connection by removing the comments after the require statements (and ensure it's also on in config/routes.rb).
+//
+//= require action_cable
+//= require_self
+//= require_tree ./channels
+// this.App || (this.App = {});
+// App.cable = ActionCable.createConsumer();
+  JS
+end
+
+gsub_file('config/environments/development.rb', /config\.assets\.debug.*/, 'config.assets.debug = false')
+
 run 'rm app/views/layouts/application.html.erb'
 file 'app/views/layouts/application.html.erb', <<-HTML
 <!DOCTYPE html>
 <html>
   <head>
     <title>TODO</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
-    <%= stylesheet_link_tag    'application', media: 'all' %>
     <%= csrf_meta_tags %>
+    #{Rails.version >= "5" ? "<%= action_cable_meta_tag %>" : nil}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <%= stylesheet_link_tag    'application', media: 'all' %>
   </head>
   <body>
+    <%= render 'shared/navbar' %>
     <%= render 'shared/flashes' %>
     <%= yield %>
     <%= javascript_include_tag 'application' %>
@@ -112,12 +125,28 @@ file 'app/views/shared/_flashes.html.erb', <<-HTML
 <% end %>
 HTML
 
-run "README.rdoc"
-file 'README.md', <<-MARKDOWN
-Product by [flrnt](#)
+run "curl -L https://raw.githubusercontent.com/lewagon/awesome-navbars/master/templates/_navbar_wagon.html.erb > app/views/shared/_navbar.html.erb"
+
+run "rm README.rdoc"
+markdown_file_content = <<-MARKDOWN
+app by [flrnt](http://flrnt.github.io/)
 MARKDOWN
+file 'README.md', markdown_file_content, force: true
 
 after_bundle do
+  generate(:controller, 'pages', 'home', '--no-helper', '--no-assets', '--skip-routes')
+  route "root to: 'pages#home'"
+
+  run "rm .gitignore"
+  file '.gitignore', <<-TXT
+.bundle
+log/*.log
+tmp/**/*
+tmp/*
+*.swp
+.DS_Store
+public/assets
+TXT
   run "bundle exec figaro install"
   generate('simple_form:install', '--bootstrap')
   generate('devise:install')
