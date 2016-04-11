@@ -18,7 +18,6 @@ gem 'bootstrap-sass'
 gem 'font-awesome-sass'
 gem 'simple_form'#{Rails.version >= "5" ? ", github: 'plataformatec/simple_form'" : nil}
 gem 'autoprefixer-rails'
-gem 'coffee-rails', '~> 4.1.0'
 
 group :development, :test do
   gem 'binding_of_caller'
@@ -60,6 +59,10 @@ RUBY
 
 file 'config/puma.rb', puma_file_content, force: true
 
+run "rm -rf app/assets/stylesheets"
+run "curl -L https://github.com/lewagon/stylesheets/archive/master.zip > stylesheets.zip"
+run "unzip stylesheets.zip -d app/assets && rm stylesheets.zip && mv app/assets/rails-stylesheets-master app/assets/stylesheets"
+
 run 'rm app/assets/javascripts/application.js'
 file 'app/assets/javascripts/application.js', <<-JS
 //= require jquery
@@ -99,6 +102,7 @@ file 'app/views/layouts/application.html.erb', <<-HTML
     <%= stylesheet_link_tag    'application', media: 'all' %>
   </head>
   <body>
+    <%= render 'shared/navbar' %>
     <%= render 'shared/flashes' %>
     <%= yield %>
     <%= javascript_include_tag 'application' %>
@@ -120,6 +124,8 @@ file 'app/views/shared/_flashes.html.erb', <<-HTML
   </div>
 <% end %>
 HTML
+
+run "curl -L https://raw.githubusercontent.com/lewagon/awesome-navbars/master/templates/_navbar_wagon.html.erb > app/views/shared/_navbar.html.erb"
 
 run "rm README.rdoc"
 markdown_file_content = <<-MARKDOWN
