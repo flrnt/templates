@@ -14,6 +14,7 @@ gem 'redis'
 gem 'sass-rails'
 gem 'jquery-rails'
 gem 'uglifier'
+gem 'bootstrap-sass'
 gem 'font-awesome-sass'
 gem 'simple_form'#{Rails.version >= "5" ? ", github: 'plataformatec/simple_form'" : nil}
 gem 'autoprefixer-rails'
@@ -72,7 +73,7 @@ file 'app/views/layouts/application.html.erb', <<-HTML
     <title>TODO</title>
     <%= csrf_meta_tags %>
     #{Rails.version >= "5" ? "<%= action_cable_meta_tag %>" : nil}
-    <%= stylesheet_link_tag    'application', media: 'all' %>
+    <%= stylesheet_link_tag 'application', media: 'all' %>
   </head>
   <body>
     <%= yield %>
