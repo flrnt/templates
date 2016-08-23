@@ -1,7 +1,8 @@
+run "pgrep spring | xargs kill -9"
 run "rm Gemfile"
 file 'Gemfile', <<-RUBY
 source 'https://rubygems.org'
-ruby '2.3.0'
+ruby '#{RUBY_VERSION}'
 
 gem 'rails', '#{Rails.version}'
 gem 'puma'
@@ -16,7 +17,7 @@ gem 'jquery-rails'
 gem 'uglifier'
 gem 'bootstrap-sass'
 gem 'font-awesome-sass'
-gem 'simple_form'#{Rails.version >= "5" ? ", github: 'plataformatec/simple_form'" : nil}
+gem 'simple_form'
 gem 'autoprefixer-rails'
 
 group :development, :test do
@@ -30,34 +31,26 @@ group :development, :test do
   #{Rails.version >= "5" ? "gem 'spring-watcher-listen', '~> 2.0.0'" : nil}
 end
 
-group :production do
-  gem 'rails_12factor'
-end
+#{Rails.version < "5" ? "gem 'rails_12factor', group: :production" : nil}
 RUBY
+
+file ".ruby-version", RUBY_VERSION
 
 file 'Procfile', <<-YAML
 web: bundle exec puma -C config/puma.rb
 YAML
 
+if Rails.version < "5"
 puma_file_content = <<-RUBY
-workers Integer(ENV['WEB_CONCURRENCY'] || 2)
-threads_count = Integer(ENV['MAX_THREADS'] || 5)
-threads threads_count, threads_count
+threads_count = ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i
 
-preload_app!
-
-rackup      DefaultRackup
-port        ENV['PORT']     || 3000
-environment ENV['RACK_ENV'] || 'development'
-
-on_worker_boot do
-  # Worker specific setup for Rails 4.1+
-  # See: https://devcenter.heroku.com/articles/deploying-rails-applications-with-the-puma-web-server#on-worker-boot
-  ActiveRecord::Base.establish_connection
-end
+threads     threads_count, threads_count
+port        ENV.fetch("PORT") { 3000 }
+environment ENV.fetch("RAILS_ENV") { "development" }
 RUBY
 
 file 'config/puma.rb', puma_file_content, force: true
+end
 
 run "rm -rf app/assets/stylesheets"
 run "curl -L https://github.com/lewagon/stylesheets/archive/master.zip > stylesheets.zip"
@@ -71,22 +64,6 @@ file 'app/assets/javascripts/application.js', <<-JS
 //= require_tree .
 JS
 
-if Rails.version >= "5"
-  run "rm app/assets/javascripts/cable.coffee"
-  file "app/assets/javascripts/cable.js", <<-JS
-// Action Cable provides the framework to deal with WebSockets in Rails.
-// You can generate new channels where WebSocket features live using the rails generate channel command.
-//
-// Turn on the cable connection by removing the comments after the require statements (and ensure it's also on in config/routes.rb).
-//
-//= require action_cable
-//= require_self
-//= require_tree ./channels
-// this.App || (this.App = {});
-// App.cable = ActionCable.createConsumer();
-  JS
-end
-
 gsub_file('config/environments/development.rb', /config\.assets\.debug.*/, 'config.assets.debug = false')
 
 run 'rm app/views/layouts/application.html.erb'
@@ -99,12 +76,13 @@ file 'app/views/layouts/application.html.erb', <<-HTML
     #{Rails.version >= "5" ? "<%= action_cable_meta_tag %>" : nil}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <%= stylesheet_link_tag    'application', media: 'all' %>
+    <%= stylesheet_link_tag 'application', media: 'all' %>
   </head>
   <body>
     <%= render 'shared/navbar' %>
     <%= render 'shared/flashes' %>
     <%= yield %>
+    <%= render 'shared/footer' %>
     <%= javascript_include_tag 'application' %>
   </body>
 </html>
@@ -125,18 +103,20 @@ file 'app/views/shared/_flashes.html.erb', <<-HTML
 <% end %>
 HTML
 
-run "curl -L https://raw.githubusercontent.com/lewagon/awesome-navbars/master/templates/_navbar_wagon.html.erb > app/views/shared/_navbar.html.erb"
+file 'app/views/shared/_navbar.html.erb'
+file 'app/views/shared/_footer.html.erb'
 
 run "rm README.rdoc"
 markdown_file_content = <<-MARKDOWN
-app by [flrnt](http://flrnt.github.io/)
+created by [FLRNT](http://www.flrnt.fr).
 MARKDOWN
 file 'README.md', markdown_file_content, force: true
 
 after_bundle do
-  generate(:controller, 'pages', 'home', '--no-helper', '--no-assets', '--skip-routes')
+  rake 'db:drop db:create db:migrate'
+  generate('simple_form:install', '--bootstrap')
+  generate(:controller, 'pages', 'home', '--no-assets', '--skip-routes')
   route "root to: 'pages#home'"
-
   run "rm .gitignore"
   file '.gitignore', <<-TXT
 .bundle
@@ -147,15 +127,30 @@ tmp/*
 .DS_Store
 public/assets
 TXT
-  run "bundle exec figaro install"
-  generate('simple_form:install', '--bootstrap')
   generate('devise:install')
   generate('devise', 'User')
+  run 'rm app/controllers/application_controller.rb'
+  file 'app/controllers/application_controller.rb', <<-RUBY
+class ApplicationController < ActionController::Base
+  protect_from_forgery with: :exception
+  before_action :authenticate_user!
+end
+RUBY
+  rake 'db:migrate'
   generate('devise:views')
+  run 'rm app/controllers/pages_controller.rb'
+  file 'app/controllers/pages_controller.rb', <<-RUBY
+class PagesController < ApplicationController
+  skip_before_action :authenticate_user!, only: [ :home ]
+
+  def home
+  end
+end
+RUBY
   environment 'config.action_mailer.default_url_options = { host: "http://localhost:3000" }', env: 'development'
   environment 'config.action_mailer.default_url_options = { host: "http://TODO_PUT_YOUR_DOMAIN_HERE" }', env: 'production'
-  rake 'db:drop db:create db:migrate'
+  run "figaro install"
   git :init
   git add: "."
-  git commit: %Q{ -m 'initial commit' }
+  git commit: %Q{ -m 'new app created by FLRNT' }
 end
