@@ -76,17 +76,20 @@ file 'app/views/layouts/application.html.erb', <<-HTML
     #{Rails.version >= "5" ? "<%= action_cable_meta_tag %>" : nil}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <%= stylesheet_link_tag    'application', media: 'all' %>
+    <%= stylesheet_link_tag 'application', media: 'all' %>
   </head>
   <body>
     <%= render 'shared/navbar' %>
     <%= render 'shared/flashes' %>
     <%= yield %>
+    <%= render 'shared/footer' %>
     <%= javascript_include_tag 'application' %>
   </body>
 </html>
 HTML
 
+file 'app/views/shared/_navbar.html.erb'
+file 'app/views/shared/_footer.html.erb'
 file 'app/views/shared/_flashes.html.erb', <<-HTML
 <% if notice %>
   <div class="alert alert-info alert-dismissible" role="alert">
@@ -101,9 +104,6 @@ file 'app/views/shared/_flashes.html.erb', <<-HTML
   </div>
 <% end %>
 HTML
-
-run "curl -L https://raw.githubusercontent.com/lewagon/awesome-navbars/master/templates/_navbar_wagon.html.erb > app/views/shared/_navbar.html.erb"
-run "curl -L https://raw.githubusercontent.com/lewagon/design/master/logos/png/logo_red_circle.png > app/assets/images/logo.png"
 
 run "rm README.rdoc"
 markdown_file_content = <<-MARKDOWN
