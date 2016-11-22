@@ -9,7 +9,7 @@ gem 'puma'
 gem 'pg'
 gem 'figaro'
 gem 'jbuilder', '~> 2.0'
-gem 'devise'#{Rails.version >= "5" ? ", github: 'plataformatec/devise'" : nil}
+gem 'devise'
 gem 'redis'
 
 gem 'sass-rails'
@@ -76,7 +76,7 @@ file 'app/views/layouts/application.html.erb', <<-HTML
     #{Rails.version >= "5" ? "<%= action_cable_meta_tag %>" : nil}
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <%= stylesheet_link_tag 'application', media: 'all' %>
+    <%= stylesheet_link_tag    'application', media: 'all' %>
   </head>
   <body>
     <%= render 'shared/navbar' %>
@@ -105,11 +105,18 @@ file 'app/views/shared/_flashes.html.erb', <<-HTML
 <% end %>
 HTML
 
-run "rm README.rdoc"
 markdown_file_content = <<-MARKDOWN
 created by the [flrnt](http://www.flrnt.fr).
 MARKDOWN
 file 'README.md', markdown_file_content, force: true
+
+generators = <<-RUBY
+config.generators do |generate|
+      generate.assets false
+    end
+RUBY
+
+environment generators
 
 after_bundle do
   rake 'db:drop db:create db:migrate'
