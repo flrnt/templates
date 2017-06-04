@@ -1,4 +1,7 @@
 run "pgrep spring | xargs kill -9"
+
+# GEMFILE
+########################################
 run "rm Gemfile"
 file 'Gemfile', <<-RUBY
 source 'https://rubygems.org'
@@ -34,12 +37,24 @@ end
 #{Rails.version < "5" ? "gem 'rails_12factor', group: :production" : nil}
 RUBY
 
+# Ruby version
+########################################
 file ".ruby-version", RUBY_VERSION
 
+# Procfile
+########################################
 file 'Procfile', <<-YAML
 web: bundle exec puma -C config/puma.rb
 YAML
 
+# Spring conf file
+########################################
+inject_into_file 'config/spring.rb', before: ').each { |path| Spring.watch(path) }' do
+  "  config/application.yml\n"
+end
+
+# Puma conf file
+########################################
 if Rails.version < "5"
 puma_file_content = <<-RUBY
 threads_count = ENV.fetch("RAILS_MAX_THREADS") { 5 }.to_i
@@ -52,6 +67,8 @@ RUBY
 file 'config/puma.rb', puma_file_content, force: true
 end
 
+# Assets
+########################################
 run "rm -rf app/assets/stylesheets"
 run "curl -L https://github.com/lewagon/stylesheets/archive/master.zip > stylesheets.zip"
 run "unzip stylesheets.zip -d app/assets && rm stylesheets.zip && mv app/assets/rails-stylesheets-master app/assets/stylesheets"
@@ -64,8 +81,12 @@ file 'app/assets/javascripts/application.js', <<-JS
 //= require_tree .
 JS
 
+# Dev environment
+########################################
 gsub_file('config/environments/development.rb', /config\.assets\.debug.*/, 'config.assets.debug = false')
 
+# Layout
+########################################
 run 'rm app/views/layouts/application.html.erb'
 file 'app/views/layouts/application.html.erb', <<-HTML
 <!DOCTYPE html>
@@ -82,14 +103,11 @@ file 'app/views/layouts/application.html.erb', <<-HTML
     <%= render 'shared/navbar' %>
     <%= render 'shared/flashes' %>
     <%= yield %>
-    <%= render 'shared/footer' %>
     <%= javascript_include_tag 'application' %>
   </body>
 </html>
 HTML
 
-file 'app/views/shared/_navbar.html.erb'
-file 'app/views/shared/_footer.html.erb'
 file 'app/views/shared/_flashes.html.erb', <<-HTML
 <% if notice %>
   <div class="alert alert-info alert-dismissible" role="alert">
@@ -105,24 +123,43 @@ file 'app/views/shared/_flashes.html.erb', <<-HTML
 <% end %>
 HTML
 
+run "curl -L https://raw.githubusercontent.com/lewagon/awesome-navbars/master/templates/_navbar_wagon.html.erb > app/views/shared/_navbar.html.erb"
+run "curl -L https://raw.githubusercontent.com/lewagon/design/master/logos/png/logo_red_circle.png > app/assets/images/logo.png"
+
+# README
+########################################
 markdown_file_content = <<-MARKDOWN
-created by the [flrnt](http://www.flrnt.fr).
+TO_DO
 MARKDOWN
 file 'README.md', markdown_file_content, force: true
 
+# Generators
+########################################
 generators = <<-RUBY
 config.generators do |generate|
       generate.assets false
+      generate.helper false
     end
 RUBY
 
 environment generators
 
+########################################
+# AFTER BUNDLE
+########################################
 after_bundle do
+  # Generators: db + simple form + pages controller
+  ########################################
   rake 'db:drop db:create db:migrate'
   generate('simple_form:install', '--bootstrap')
-  generate(:controller, 'pages', 'home', '--no-assets', '--skip-routes')
+  generate(:controller, 'pages', 'home', '--no-helper', '--no-assets', '--skip-routes')
+
+  # Routes
+  ########################################
   route "root to: 'pages#home'"
+
+  # Git ignore
+  ########################################
   run "rm .gitignore"
   file '.gitignore', <<-TXT
 .bundle
@@ -133,8 +170,14 @@ tmp/*
 .DS_Store
 public/assets
 TXT
+
+  # Devie install + user
+  ########################################
   generate('devise:install')
   generate('devise', 'User')
+
+  # App controller
+  ########################################
   run 'rm app/controllers/application_controller.rb'
   file 'app/controllers/application_controller.rb', <<-RUBY
 class ApplicationController < ActionController::Base
@@ -142,8 +185,14 @@ class ApplicationController < ActionController::Base
   before_action :authenticate_user!
 end
 RUBY
+
+  # migrate + devie views
+  ########################################
   rake 'db:migrate'
   generate('devise:views')
+
+  # Pages Controller
+  ########################################
   run 'rm app/controllers/pages_controller.rb'
   file 'app/controllers/pages_controller.rb', <<-RUBY
 class PagesController < ApplicationController
@@ -153,10 +202,19 @@ class PagesController < ApplicationController
   end
 end
 RUBY
+
+  # Environments
+  ########################################
   environment 'config.action_mailer.default_url_options = { host: "http://localhost:3000" }', env: 'development'
   environment 'config.action_mailer.default_url_options = { host: "http://TODO_PUT_YOUR_DOMAIN_HERE" }', env: 'production'
+
+  # Figaro
+  ########################################
   run "figaro install"
+
+  # Git
+  ########################################
   git :init
   git add: "."
-  git commit: %Q{ -m 'initial commit' }
+  git commit: %Q{ -m 'Initial commit' }
 end
